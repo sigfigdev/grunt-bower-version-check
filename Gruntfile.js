@@ -12,6 +12,27 @@ module.exports = function(grunt) {
 
   // Project configuration.
   grunt.initConfig({
+    typescript: {
+      base: {
+        src: [
+          "src/references.ts",
+          "src/**/*.ts",
+        ],
+        dest: "tmp/tslib.js",
+      }
+    },
+
+    concat: {
+      dist: {
+        src: [
+          "src/imports.js",
+          "tmp/tslib.js",
+          "src/exports.js",
+        ],
+        dest: "tasks/bower_version_check.js"
+      }
+    },
+
     jshint: {
       all: [
         'Gruntfile.js',
@@ -62,12 +83,16 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-nodeunit');
+  grunt.loadNpmTasks('grunt-contrib-concat');
+  grunt.loadNpmTasks('grunt-typescript');
 
   // Whenever the "test" task is run, first clean the "tmp" dir, then run this
   // plugin's task(s), then test the result.
   grunt.registerTask('test', ['clean', 'bower_version_check', 'nodeunit']);
 
+  grunt.registerTask('build', ['typescript', 'concat']);
+
   // By default, lint and run all tests.
-  grunt.registerTask('default', ['jshint', 'test']);
+  grunt.registerTask('default', ['build', 'jshint', 'test']);
 
 };
