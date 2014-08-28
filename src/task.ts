@@ -5,50 +5,90 @@
  * Copyright (c) 2014 anchann
  * Licensed under the MIT license.
  */
+import gruntjs = grunt;
 
 module anchann.grunt.bowerVersionCheck {
+	import AsyncResultCatcher = gruntjs.task.AsyncResultCatcher;
+	import IMultiTask         = gruntjs.task.IMultiTask;
+
+	interface BowerList {
+	}
+
 	export class BowerVersionCheck {
 		constructor(private grunt: IGrunt) {
 		}
 
-		public run(): void {
-			var grunt = this.grunt;
+		private getBowerList(): Q.Promise<BowerList> {
+			var deferred: Q.Deferred<BowerList> = q.defer<BowerList>();
 
-			// Please see the Grunt documentation for more information regarding task
-			// creation: http://gruntjs.com/creating-tasks
+			this.grunt.util.spawn({
+				cmd:  "bower",
+				args: ["list", "--json"]
+				}, (error: Error, result: gruntjs.util.ISpawnResult, code: number): void => {
+					if (code === 0) {
+						deferred.resolve(JSON.parse(result.stdout));
+					}
+					else {
+						deferred.reject("Failed to get bower list: " + error);
+					}
+				}
+			);
 
-			grunt.registerMultiTask('bower_version_check', 'Check versions of bower components against bower.json and bail on (or otherwise handle) mismatches.', function() {
-				// Merge task-specific and/or target-specific options with these defaults.
-				var options = this.options({
-					punctuation: '.',
-					separator: ', '
-				});
+			return deferred.promise;
+		}
 
-				// Iterate over all specified file groups.
-				this.files.forEach(function(f) {
-					// Concat specified files.
-					var src = f.src.filter(function(filepath) {
-						// Warn on and remove invalid source files (if nonull was set).
-						if (!grunt.file.exists(filepath)) {
-							grunt.log.warn('Source file "' + filepath + '" not found.');
-							return false;
-						} else {
-							return true;
-						}
-					}).map(function(filepath) {
-						// Read file source.
-						return grunt.file.read(filepath);
-					}).join(grunt.util.normalizelf(options.separator));
+		public registerTask(): void {
+			var theThis = this;
 
-					// Handle options.
-					src += options.punctuation;
+			this.grunt.registerMultiTask(
+				"bower_version_check",
+				"Check versions of bower components against bower.json and bail on (or otherwise handle) mismatches.",
+				// we explicitly don't want this binding, so using non-ts function literal syntax
+				function() {
+					var task: IMultiTask = this;
+					theThis.run.call(theThis, task);
+				}
+			);
+		}
 
-					// Write the destination file.
-					grunt.file.write(f.dest, src);
+		public run(task: IMultiTask): void {
+			var done: AsyncResultCatcher = task.async();
 
-					// Print a success message.
-					grunt.log.writeln('File "' + f.dest + '" created.');
-				});
+			this.getBowerList().then((list: BowerList): void => {
+				console.log(list);
+				done(true);
+			});
+
+			// Merge task-specific and/or target-specific options with these defaults.
+			var options: any = task.options({
+				punctuation: '.',
+				separator: ', '
+			});
+
+			// Iterate over all specified file groups.
+			task.files.forEach((f) => {
+				// Concat specified files.
+				var src = f.src.filter((filepath) => {
+					// Warn on and remove invalid source files (if nonull was set).
+					if (!this.grunt.file.exists(filepath)) {
+						this.grunt.log.warn('Source file "' + filepath + '" not found.');
+						return false;
+					} else {
+						return true;
+					}
+				}).map((filepath) => {
+					// Read file source.
+					return this.grunt.file.read(filepath);
+				}).join(this.grunt.util.normalizelf(options.separator));
+
+				// Handle options.
+				src += options.punctuation;
+
+				// Write the destination file.
+				this.grunt.file.write(f.dest, src);
+
+				// Print a success message.
+				this.grunt.log.writeln('File "' + f.dest + '" created.');
 			});
 		}
 	}

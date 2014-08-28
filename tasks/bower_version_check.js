@@ -1,6 +1,10 @@
 var _ = require("lodash");
 var q = require("q");
 
+var grunt = "we don't use this variable, but only need it for typechecking when we import gruntjs = grunt";
+
+var gruntjs = grunt;
+
 var anchann;
 (function (anchann) {
     (function (grunt) {
@@ -9,33 +13,63 @@ var anchann;
                 function BowerVersionCheck(grunt) {
                     this.grunt = grunt;
                 }
-                BowerVersionCheck.prototype.run = function () {
-                    var grunt = this.grunt;
+                BowerVersionCheck.prototype.getBowerList = function () {
+                    var deferred = q.defer();
 
-                    grunt.registerMultiTask('bower_version_check', 'Check versions of bower components against bower.json and bail on (or otherwise handle) mismatches.', function () {
-                        var options = this.options({
-                            punctuation: '.',
-                            separator: ', '
-                        });
+                    this.grunt.util.spawn({
+                        cmd: "bower",
+                        args: ["list", "--json"]
+                    }, function (error, result, code) {
+                        if (code === 0) {
+                            deferred.resolve(JSON.parse(result.stdout));
+                        } else {
+                            deferred.reject("Failed to get bower list: " + error);
+                        }
+                    });
 
-                        this.files.forEach(function (f) {
-                            var src = f.src.filter(function (filepath) {
-                                if (!grunt.file.exists(filepath)) {
-                                    grunt.log.warn('Source file "' + filepath + '" not found.');
-                                    return false;
-                                } else {
-                                    return true;
-                                }
-                            }).map(function (filepath) {
-                                return grunt.file.read(filepath);
-                            }).join(grunt.util.normalizelf(options.separator));
+                    return deferred.promise;
+                };
 
-                            src += options.punctuation;
+                BowerVersionCheck.prototype.registerTask = function () {
+                    var theThis = this;
 
-                            grunt.file.write(f.dest, src);
+                    this.grunt.registerMultiTask("bower_version_check", "Check versions of bower components against bower.json and bail on (or otherwise handle) mismatches.", function () {
+                        var task = this;
+                        theThis.run.call(theThis, task);
+                    });
+                };
 
-                            grunt.log.writeln('File "' + f.dest + '" created.');
-                        });
+                BowerVersionCheck.prototype.run = function (task) {
+                    var _this = this;
+                    var done = task.async();
+
+                    this.getBowerList().then(function (list) {
+                        console.log(list);
+                        done(true);
+                    });
+
+                    var options = task.options({
+                        punctuation: '.',
+                        separator: ', '
+                    });
+
+                    task.files.forEach(function (f) {
+                        var src = f.src.filter(function (filepath) {
+                            if (!_this.grunt.file.exists(filepath)) {
+                                _this.grunt.log.warn('Source file "' + filepath + '" not found.');
+                                return false;
+                            } else {
+                                return true;
+                            }
+                        }).map(function (filepath) {
+                            return _this.grunt.file.read(filepath);
+                        }).join(_this.grunt.util.normalizelf(options.separator));
+
+                        src += options.punctuation;
+
+                        _this.grunt.file.write(f.dest, src);
+
+                        _this.grunt.log.writeln('File "' + f.dest + '" created.');
                     });
                 };
                 return BowerVersionCheck;
@@ -49,5 +83,5 @@ var anchann;
 
 module.exports = function(grunt) {
 	var bowerVersionCheck = new anchann.grunt.bowerVersionCheck.BowerVersionCheck(grunt);
-	bowerVersionCheck.run();
+	bowerVersionCheck.registerTask();
 }
