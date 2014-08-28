@@ -9,17 +9,26 @@ import gruntjs = grunt;
 
 module anchann.grunt.bowerVersionCheck {
 	import AsyncResultCatcher = gruntjs.task.AsyncResultCatcher;
-	import IMultiTask         = gruntjs.task.IMultiTask;
+	import ITask              = gruntjs.task.ITask;
+	import List               = bower.list.List;
+	import Dependency         = bower.list.Dependency;
 
-	interface BowerList {
+	interface Options {
+		ignoreExtraneous:                           boolean;
+		attemptHashVersionIncompatibilityDetection: boolean;
+	}
+
+	var /* final */ DEFAULT_OPTIONS: Options = {
+		ignoreExtraneous:                           false,
+		attemptHashVersionIncompatibilityDetection: true,
 	}
 
 	export class BowerVersionCheck {
 		constructor(private grunt: IGrunt) {
 		}
 
-		private getBowerList(): Q.Promise<BowerList> {
-			var deferred: Q.Deferred<BowerList> = q.defer<BowerList>();
+		private getBowerList(): Q.Promise<List> {
+			var deferred: Q.Deferred<List> = q.defer<List>();
 
 			this.grunt.util.spawn({
 				cmd:  "bower",
@@ -40,56 +49,66 @@ module anchann.grunt.bowerVersionCheck {
 		public registerTask(): void {
 			var theThis = this;
 
-			this.grunt.registerMultiTask(
-				"bower_version_check",
+			this.grunt.registerTask(
+				"bowerVersionCheck",
 				"Check versions of bower components against bower.json and bail on (or otherwise handle) mismatches.",
 				// we explicitly don't want this binding, so using non-ts function literal syntax
 				function() {
-					var task: IMultiTask = this;
+					var task: ITask = this;
 					theThis.run.call(theThis, task);
 				}
 			);
 		}
 
-		public run(task: IMultiTask): void {
+		public run(task: ITask): void {
+			var options: Options = task.options<Options>(DEFAULT_OPTIONS);
 			var done: AsyncResultCatcher = task.async();
 
-			this.getBowerList().then((list: BowerList): void => {
-				console.log(list);
-				done(true);
-			});
+			this.getBowerList()
+			.then((list: List): void => {
+				var failed: boolean = false;
 
-			// Merge task-specific and/or target-specific options with these defaults.
-			var options: any = task.options({
-				punctuation: '.',
-				separator: ', '
-			});
-
-			// Iterate over all specified file groups.
-			task.files.forEach((f) => {
-				// Concat specified files.
-				var src = f.src.filter((filepath) => {
-					// Warn on and remove invalid source files (if nonull was set).
-					if (!this.grunt.file.exists(filepath)) {
-						this.grunt.log.warn('Source file "' + filepath + '" not found.');
-						return false;
-					} else {
-						return true;
+				_.each(list.dependencies, (dependency: Dependency): void => {
+					if (!options.ignoreExtraneous && dependency.extraneous) {
+						this.grunt.log.error("Extraneous dependency: " + dependency.pkgMeta.name);
+						failed = true;
 					}
-				}).map((filepath) => {
-					// Read file source.
-					return this.grunt.file.read(filepath);
-				}).join(this.grunt.util.normalizelf(options.separator));
 
-				// Handle options.
-				src += options.punctuation;
+					if (dependency.incompatible) {
+						this.grunt.log.error(
+							"Incompatible dependency" +
+							(dependency.linked ? " (linked)" : "") +
+							": " + dependency.pkgMeta.name + ". " +
+							"Required " + dependency.endpoint.target + " but found " + dependency.pkgMeta.version);
+						failed = true;
+					}
 
-				// Write the destination file.
-				this.grunt.file.write(f.dest, src);
+					if (options.attemptHashVersionIncompatibilityDetection && BowerVersionCheck.isHashVersioned(dependency)) {
+						var actualHashVersion: string = BowerVersionCheck.getActualHashVersion(dependency);
 
-				// Print a success message.
-				this.grunt.log.writeln('File "' + f.dest + '" created.');
+						if (dependency.endpoint.target !== actualHashVersion) {
+							this.grunt.log.error(
+								"Incompatible dependency" +
+								(dependency.linked ? " (linked)" : "") +
+								": " + dependency.pkgMeta.name + ". " +
+								"Required " + dependency.endpoint.target + " but found " + actualHashVersion);
+							failed = true;
+						}
+					}
+				});
+
+				done(!failed);
 			});
+		}
+
+		private static isHashVersioned(dependency: Dependency): boolean {
+			return dependency.endpoint.target.length === 40 &&
+				dependency.endpoint.source.substr(-4) === ".git";
+		}
+
+		private static getActualHashVersion(dependency: Dependency): string {
+			return (dependency.pkgMeta._resolution && dependency.pkgMeta._resolution.commit)
+				|| undefined;
 		}
 	}
 }
