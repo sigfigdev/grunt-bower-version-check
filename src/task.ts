@@ -98,6 +98,11 @@ module anchann.grunt.bowerVersionCheck {
 				});
 
 				done(!failed);
+			})
+			.catch((reason: any): void => {
+				this.grunt.log.error("Failed to get the output of `bower list` with the following error:");
+				this.grunt.log.error(reason);
+				done(false);
 			});
 		}
 

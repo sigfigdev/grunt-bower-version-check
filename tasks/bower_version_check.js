@@ -74,6 +74,10 @@ var anchann;
                         });
 
                         done(!failed);
+                    }).catch(function (reason) {
+                        _this.grunt.log.error("Failed to get the output of `bower list` with the following error:");
+                        _this.grunt.log.error(reason);
+                        done(false);
                     });
                 };
 
