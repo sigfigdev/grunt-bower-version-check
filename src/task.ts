@@ -16,23 +16,30 @@ module anchann.grunt.bowerVersionCheck {
 	interface Options {
 		ignoreExtraneous:                           boolean;
 		attemptHashVersionIncompatibilityDetection: boolean;
+		bowerAllowRoot:                             boolean;
 	}
 
 	var /* final */ DEFAULT_OPTIONS: Options = {
 		ignoreExtraneous:                           false,
 		attemptHashVersionIncompatibilityDetection: true,
+		bowerAllowRoot:                             false,
 	}
 
 	export class BowerVersionCheck {
 		constructor(private grunt: IGrunt) {
 		}
 
-		private getBowerList(): Q.Promise<List> {
+		private getBowerList(allowRoot: boolean = false): Q.Promise<List> {
 			var deferred: Q.Deferred<List> = q.defer<List>();
+
+			var args: string[] = ["list", "--json"];
+			if (allowRoot) {
+				args.push("--allow-root");
+			}
 
 			this.grunt.util.spawn({
 				cmd:  "bower",
-				args: ["list", "--json"]
+				args: args,
 				}, (error: Error, result: gruntjs.util.ISpawnResult, code: number): void => {
 					if (code === 0) {
 						deferred.resolve(JSON.parse(result.stdout));
@@ -64,7 +71,7 @@ module anchann.grunt.bowerVersionCheck {
 			var options: Options = task.options<Options>(DEFAULT_OPTIONS);
 			var done: AsyncResultCatcher = task.async();
 
-			this.getBowerList()
+			this.getBowerList(options.bowerAllowRoot)
 			.then((list: List): void => {
 				var failed: boolean = false;
 

@@ -11,19 +11,26 @@ var anchann;
         (function (bowerVersionCheck) {
             var DEFAULT_OPTIONS = {
                 ignoreExtraneous: false,
-                attemptHashVersionIncompatibilityDetection: true
+                attemptHashVersionIncompatibilityDetection: true,
+                bowerAllowRoot: false
             };
 
             var BowerVersionCheck = (function () {
                 function BowerVersionCheck(grunt) {
                     this.grunt = grunt;
                 }
-                BowerVersionCheck.prototype.getBowerList = function () {
+                BowerVersionCheck.prototype.getBowerList = function (allowRoot) {
+                    if (typeof allowRoot === "undefined") { allowRoot = false; }
                     var deferred = q.defer();
+
+                    var args = ["list", "--json"];
+                    if (allowRoot) {
+                        args.push("--allow-root");
+                    }
 
                     this.grunt.util.spawn({
                         cmd: "bower",
-                        args: ["list", "--json"]
+                        args: args
                     }, function (error, result, code) {
                         if (code === 0) {
                             deferred.resolve(JSON.parse(result.stdout));
@@ -49,7 +56,7 @@ var anchann;
                     var options = task.options(DEFAULT_OPTIONS);
                     var done = task.async();
 
-                    this.getBowerList().then(function (list) {
+                    this.getBowerList(options.bowerAllowRoot).then(function (list) {
                         var failed = false;
 
                         _.each(list.dependencies, function (dependency) {
