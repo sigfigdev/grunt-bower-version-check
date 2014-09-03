@@ -12,6 +12,7 @@ module bower.list {
 		linked:       boolean;
 		extraneous:   boolean;
 		incompatible: boolean;
+		missing:      boolean;
 		update:       Update;
 	}
 

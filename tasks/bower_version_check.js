@@ -70,6 +70,11 @@ var anchann;
                                 failed = true;
                             }
 
+                            if (dependency.missing) {
+                                _this.grunt.log.error("Missing dependency: " + dependency.endpoint.name + ". " + "Required " + dependency.endpoint.target);
+                                failed = true;
+                            }
+
                             if (options.attemptHashVersionIncompatibilityDetection && BowerVersionCheck.isHashVersioned(dependency)) {
                                 var actualHashVersion = BowerVersionCheck.getActualHashVersion(dependency);
 

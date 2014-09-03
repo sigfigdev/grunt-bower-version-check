@@ -90,6 +90,13 @@ module anchann.grunt.bowerVersionCheck {
 						failed = true;
 					}
 
+					if (dependency.missing) {
+						this.grunt.log.error(
+							"Missing dependency: " + dependency.endpoint.name + ". " +
+							"Required " + dependency.endpoint.target);
+						failed = true;
+					}
+
 					if (options.attemptHashVersionIncompatibilityDetection && BowerVersionCheck.isHashVersioned(dependency)) {
 						var actualHashVersion: string = BowerVersionCheck.getActualHashVersion(dependency);
 
