@@ -12,7 +12,7 @@ module.exports = function(grunt) {
 
   // Project configuration.
   grunt.initConfig({
-    typescript: {
+    ts: {
       base: {
         src: [
           "src/references.ts",
@@ -84,13 +84,13 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-nodeunit');
   grunt.loadNpmTasks('grunt-contrib-concat');
-  grunt.loadNpmTasks('grunt-typescript');
+  grunt.loadNpmTasks('grunt-ts');
 
   // Whenever the "test" task is run, first clean the "tmp" dir, then run this
   // plugin's task(s), then test the result.
   grunt.registerTask('test', ['clean', 'bower_version_check', 'nodeunit']);
 
-  grunt.registerTask('build', ['typescript', 'concat']);
+  grunt.registerTask('build', ['ts', 'concat']);
 
   // By default, lint and run all tests.
   grunt.registerTask('default', ['build', 'jshint', 'test']);
