@@ -1,11 +1,11 @@
 {
   "name": "grunt-bower-version-check",
   "description": "Check versions of bower components against bower.json and bail on (or otherwise handle) mismatches.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "homepage": "https://github.com/anchann/grunt-bower-version-check",
   "author": {
-    "name": "sigfig",
-    "email": "sigfig@sigfig.com"
+    "name": "SigFig",
+    "email": "team-tech@sigfig.com"
   },
   "repository": {
     "type": "git",
@@ -32,9 +32,6 @@
     "grunt-ts":       "5.5.1",
     "grunt-contrib-concat":   "^1.0.0",
     "grunt":                  "^1.0.1"
-  },
-  "peerDependencies": {
-    "grunt": "~1.0.1"
   },
   "keywords": [
     "gruntplugin"
